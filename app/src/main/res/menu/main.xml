@@ -1,0 +1,17 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@+id/mapTypeNormal"
+        android:title="Zwykła"/>
+    <item
+        android:id="@+id/mapTypeSatellite"
+        android:title="Satelitarna"/>
+    <item
+        android:id="@+id/mapTypeTerrain"
+        android:title="Terenowa"/>
+    <item
+        android:id="@+id/mapTypeHybrid"
+        android:title="Hybrydowa"/>
+    
+
+</menu>
