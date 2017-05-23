@@ -1,5 +1,5 @@
 
-package flex.com.sklepik.data;
+package com.flex.sklepik.data;
 
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;

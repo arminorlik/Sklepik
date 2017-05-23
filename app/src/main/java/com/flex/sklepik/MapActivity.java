@@ -1,4 +1,4 @@
-package flex.com.sklepik;
+package com.flex.sklepik;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -38,7 +38,7 @@ import butterknife.OnClick;
 import io.realm.Realm;
 import io.realm.RealmResults;
 
-import static flex.com.sklepik.R.id.map;
+import static com.flex.sklepik.R.id.map;
 
 public class MapActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener, GoogleMap.OnMarkerClickListener {
 

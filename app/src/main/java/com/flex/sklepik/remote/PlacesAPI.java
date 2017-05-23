@@ -1,6 +1,6 @@
-package flex.com.sklepik.remote;
+package com.flex.sklepik.remote;
 
-import flex.com.sklepik.data.Places;
+import com.flex.sklepik.data.Places;
 import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;

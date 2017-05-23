@@ -1,4 +1,4 @@
-package flex.com.sklepik;
+package com.flex.sklepik;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;

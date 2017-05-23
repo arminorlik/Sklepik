@@ -1,21 +1,20 @@
-package flex.com.sklepik;
+package com.flex.sklepik;
 
-import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.flex.sklepik.data.Places;
+import com.flex.sklepik.remote.PlacesAPI;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,8 +22,6 @@ import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import flex.com.sklepik.data.Places;
-import flex.com.sklepik.remote.PlacesAPI;
 import io.realm.Realm;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -58,9 +55,7 @@ public class MainActivity extends AppCompatActivity {
 
         ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 123);
 
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Uprawnienia nie przyznane", Toast.LENGTH_SHORT).show();
-        }
+
 
         rowModels = new ArrayList<>();
         shopsNames = new ArrayList<>();

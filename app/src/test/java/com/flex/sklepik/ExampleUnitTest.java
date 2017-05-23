@@ -1,4 +1,4 @@
-package flex.com.sklepik;
+package com.flex.sklepik;
 
 import org.junit.Test;
 

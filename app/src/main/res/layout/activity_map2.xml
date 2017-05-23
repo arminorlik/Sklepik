@@ -6,7 +6,7 @@
                 android:layout_height="fill_parent"
                 android:background="#000000"
                 android:orientation="vertical"
-                tools:context="flex.com.sklepik.MapActivity">
+                tools:context="com.flex.sklepik.MapActivity">
 
 
     <fragment
