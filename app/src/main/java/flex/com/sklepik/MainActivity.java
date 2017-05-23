@@ -64,7 +64,9 @@ public class MainActivity extends AppCompatActivity {
 
         rowModels = new ArrayList<>();
         shopsNames = new ArrayList<>();
-        mRealm = Realm.getInstance(this);
+        Realm.init(this);
+
+        mRealm = Realm.getDefaultInstance();
 
         initCollapsingToolbar();
 
@@ -118,7 +120,6 @@ public class MainActivity extends AppCompatActivity {
                     Collections.sort(shopsNames);
 
                     adapter = new ShopsAdapter(MainActivity.this, shopsNames);
-
                     recyclerView.setAdapter(adapter);
                 }
 

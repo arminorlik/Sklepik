@@ -54,6 +54,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(map);
+        mapFragment.getMapAsync(this);
 
         gpStracker = new GPStracker(getApplicationContext());
         mapFragment.getMapAsync(this);
@@ -75,13 +76,14 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
         AdRequest adRequest = new AdRequest.Builder().build();
         adView.loadAd(adRequest);
-        realmDatabaseBuild();
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         moveCameraToActualPosition(latitude, longitude);
+        //po wczytaniu mapy wyciągnij dane z bazy sklepów
+        realmDatabaseBuild();
     }
 
     private void addMarker(double lat, double lon) {
@@ -108,24 +110,22 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     private void moveCameraToActualPosition(double lat, double lon) {
         CameraPosition cameraPosition = new CameraPosition.Builder()
                 .target(new LatLng(lat, lon))
-                .zoom(10).build();
+                .zoom(12).build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
     private void realmDatabaseBuild() {
-        Realm realm = Realm.getInstance(this);
+        Realm realm = Realm.getDefaultInstance();
 
-        rowModels = realm.where(RowModel.class).equalTo("name", "Auchan").findAll();
-
+        rowModels = realm.where(RowModel.class).equalTo("name", "Zabka").findAll();
         if (!rowModels.isEmpty()) {
             String s;
             for (int i = 0; i < rowModels.size(); i++) {
                 Log.d("fdsdfs", rowModels.get(i).getName());
-                //addMarker(rowModels.get(i).getLattitude(), rowModels.get(i).getLongitude());
 
+                addMarker(rowModels.get(i).getLongitude(), rowModels.get(i).getLattitude());
             }
         }
-
     }
 
     @Override
