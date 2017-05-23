@@ -80,8 +80,9 @@ public class ShopsAdapter extends RecyclerView.Adapter<ShopsAdapter.MyViewHolder
             @Override
             public void onClick(View view) {
 
-                Log.d("Nazwa sklepu: ", shopsList.get(position));
+                //Log.d("Nazwa sklepu: ", shopsList.get(position));
                 Intent intent = new Intent(mContext, MapActivity.class);
+                intent.putExtra("shopName", shopsList.get(position));
                 mContext.startActivity(intent);
             }
         });
