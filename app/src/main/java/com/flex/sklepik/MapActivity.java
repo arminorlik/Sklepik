@@ -1,11 +1,12 @@
 package com.flex.sklepik;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Address;
+import android.location.Criteria;
 import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,8 +18,11 @@ import android.view.MenuItem;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import com.flex.sklepik.data.Places;
+import com.flex.sklepik.remote.PlacesAPI;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -37,24 +41,28 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import io.realm.Realm;
 import io.realm.RealmResults;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 import static com.flex.sklepik.R.id.map;
 
-public class MapActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener, GoogleMap.OnMarkerClickListener {
+public class MapActivity extends FragmentActivity implements OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
 
     private GoogleMap mMap;
     private double naviLat, naviLong;
     private double latitude, longitude;
+    private GoogleApiClient mGoogleApiClient;
 
     @BindView(R.id.adView)
     AdView adView;
     @BindView(R.id.butnavi)
     ImageButton butnavi;
-    private GPStracker gpStracker;
     private Location location;
     private RealmResults<RowModel> rowModels;
     private String shopName;
     private Bundle bundle;
+    private Realm realm;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,28 +74,15 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
                 .findFragmentById(map);
         mapFragment.getMapAsync(this);
 
-
         bundle = getIntent().getExtras();
         shopName = bundle.getString("shopName");
 
-        gpStracker = new GPStracker(getApplicationContext());
         mapFragment.getMapAsync(this);
         ActivityCompat.requestPermissions(MapActivity.this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 123);
-        gpStracker = new GPStracker(getApplicationContext());
-
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Uprawnienia nie przyznane", Toast.LENGTH_SHORT).show();
-        }
-        LocationManager lm = (LocationManager) this.getSystemService(this.LOCATION_SERVICE);
-        lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 3, this);
-        location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-
-        Location loc = gpStracker.getlocation();
-        latitude = loc.getLatitude();
-        longitude = loc.getLongitude();
 
         AdRequest adRequest = new AdRequest.Builder().build();
         adView.loadAd(adRequest);
+        //realm = Realm.getDefaultInstance();
     }
 
     @Override
@@ -98,7 +93,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             Toast.makeText(this, "Uprawnienia nie przyznane", Toast.LENGTH_SHORT).show();
         }
         mMap.setMyLocationEnabled(true);
-        moveCameraToActualPosition(latitude, longitude);
+        cameraMove();
 
         //po wczytaniu mapy wyciągnij dane z bazy sklepów
         realmDatabaseBuild();
@@ -107,9 +102,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     private void addMarker(double lat, double lon) {
         mMap.addMarker(new MarkerOptions().position(new LatLng(lat, lon)));
     }
-
-
-
 
     @OnClick(R.id.butnavi)
     public void btnNavi() {
@@ -136,16 +128,42 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     }
 
     private void realmDatabaseBuild() {
-        Realm realm = Realm.getDefaultInstance();
+        PlacesAPI.Factory.getInstance().getPlaces().enqueue(new Callback<Places>() {
 
-        rowModels = realm.where(RowModel.class).equalTo("name", shopName).findAll();
+            @Override
+            public void onResponse(Call<Places> call, Response<Places> response) {
+                for (int i = 0; i < response.body().getPosts().size(); i++) {
+                    if( response.body().getPosts().get(i).getNazwa().equals(shopName)){
+                        addMarker(Double.parseDouble(response.body().getPosts().get(i).getDlug()),
+                                Double.parseDouble(response.body().getPosts().get(i).getSzer()));
+
+
+                    }
+
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<Places> call, Throwable t) {
+
+            }
+        });
+
+       /* rowModels = realm.where(RowModel.class).equalTo("name", shopName).findAll();
         if (!rowModels.isEmpty()) {
 
             for (int i = 0; i < rowModels.size(); i++) {
 
                 addMarker(rowModels.get(i).getLongitude(), rowModels.get(i).getLattitude());
             }
-        }
+        }*/
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        //realm.close();
     }
 
     @Override
@@ -169,7 +187,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         return super.onOptionsItemSelected(item);
     }
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -181,52 +198,63 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     public void onBackPressed() {
         super.onBackPressed();
         mMap.clear();
-        finish();
+        //rowModels = null;
     }
 
     @Override
-    public void onLocationChanged(Location location) {
+    protected void onResume() {
 
-    }
-
-    @Override
-    public void onStatusChanged(String s, int i, Bundle bundle) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String s) {
-
-    }
-
-    @Override
-    public void onProviderDisabled(String s) {
-
+        super.onResume();
     }
 
     @Override
     public boolean onMarkerClick(Marker marker) {
 
+        LatLng gps = marker.getPosition();
 
-            LatLng gps = marker.getPosition();
+        //ustawienie lat i long dla nawigacji
+        naviLat = gps.latitude;
+        naviLong = gps.longitude;
 
-            //ustawienie lat i long dla nawigacji
-            naviLat = gps.latitude;
-            naviLong = gps.longitude;
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        List<Address> addresses;
+        try {
+            addresses = geocoder.getFromLocation(gps.latitude, gps.longitude, 1);
+            String adres = addresses.get(0).getAddressLine(0);
+            Toast.makeText(this, "Adres: " + adres, Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
+        return false;
+    }
 
-            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-            List<Address> addresses;
-            try {
-                addresses = geocoder.getFromLocation(gps.latitude, gps.longitude, 1);
-                String adres = addresses.get(0).getAddressLine(0);
-                Toast.makeText(this, "Adres: " + adres, Toast.LENGTH_SHORT).show();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+    public void cameraMove() {
 
-            return false;
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+        String provider = locationManager.getBestProvider(criteria, true);
 
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Uprawnienia nie przyznane", Toast.LENGTH_SHORT).show();
+        }
+        Location myLocation = locationManager.getLastKnownLocation(provider);
+        if (myLocation != null) {
+            LatLng ll = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+
+            CameraPosition cameraPosition = new CameraPosition.Builder()
+                    .target(ll)
+                    .zoom(11).build();
+            mMap.animateCamera(CameraUpdateFactory
+                    .newCameraPosition(cameraPosition));
+        } else {
+            LatLng ll = new LatLng(52.230625, 21.013129);//WAWA
+            CameraPosition cp = new CameraPosition.Builder()
+                    .target(ll)
+                    .zoom(10).build();
+            mMap.animateCamera(CameraUpdateFactory
+                    .newCameraPosition(cp));
+        }
     }
 }

@@ -1,5 +1,9 @@
 package com.flex.sklepik;
 
+import android.app.Activity;
+import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.AppBarLayout;
@@ -11,10 +15,13 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.flex.sklepik.data.Places;
 import com.flex.sklepik.remote.PlacesAPI;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
     List<String> shopsNames;
     ArrayList<RowModel> rowModels;
+    public static final int REQUEST_GOOGLE_PLAY_SERVICES = 1972;
 
     public Realm mRealm;
     @BindView(R.id.toolbar_layout)
@@ -40,12 +48,18 @@ public class MainActivity extends AppCompatActivity {
     private ShopsAdapter adapter;
     @BindView(R.id.recycler_view)
     RecyclerView recyclerView;
+    private ProgressDialog progressDialog;
+    private Dialog errorDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
+
         ButterKnife.bind(this);
+
+        startRegistrationService();
+
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ConnectionDetector connectionDetector = new ConnectionDetector(this);
@@ -55,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
 
         ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 123);
 
-
+        checkPlayServices();
 
         rowModels = new ArrayList<>();
         shopsNames = new ArrayList<>();
@@ -76,10 +90,46 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
 
         AsyncTaskRetro asyncTaskRetro = new AsyncTaskRetro();
+
         asyncTaskRetro.execute();
     }
 
+    private boolean checkPlayServices() {
+
+        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+
+        int resultCode = googleApiAvailability.isGooglePlayServicesAvailable(this);
+
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (googleApiAvailability.isUserResolvableError(resultCode)) {
+
+                if (errorDialog == null) {
+                    errorDialog = googleApiAvailability.getErrorDialog(this, resultCode, 2404);
+                    errorDialog.setCancelable(false);
+                }
+
+                if (!errorDialog.isShowing())
+                    errorDialog.show();
+            }
+        }
+
+        return resultCode == ConnectionResult.SUCCESS;
+    }
+
     private class AsyncTaskRetro extends AsyncTask<Void, Void, Void> {
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            progressDialog = new ProgressDialog(MainActivity.this);
+            progressDialog.setMessage("Czekaj...");
+            progressDialog.show();
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            progressDialog.hide();
+        }
 
         @Override
         protected Void doInBackground(Void... voids) {
@@ -101,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
                     mRealm.beginTransaction();
                     mRealm.copyToRealm(rowModels);
                     mRealm.commitTransaction();
+                    mRealm.close();
 
                     for (int j = 0; j < rowModels.size(); j++) {
 
@@ -114,7 +165,6 @@ public class MainActivity extends AppCompatActivity {
                     //sortowanie listy z nazwami sklepow
                     Collections.sort(shopsNames);
 
-                    adapter = new ShopsAdapter(MainActivity.this, shopsNames);
                     recyclerView.setAdapter(adapter);
                 }
 
@@ -126,6 +176,14 @@ public class MainActivity extends AppCompatActivity {
 
             return null;
         }
+    }
+
+    @Override
+    protected void onResume() {
+
+        recyclerView.setAdapter(adapter);
+
+        super.onResume();
     }
 
     private void initCollapsingToolbar() {
@@ -154,5 +212,32 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private void startRegistrationService() {
+        GoogleApiAvailability api = GoogleApiAvailability.getInstance();
+        int code = api.isGooglePlayServicesAvailable(this);
+        if (code == ConnectionResult.SUCCESS) {
+            onActivityResult(REQUEST_GOOGLE_PLAY_SERVICES, Activity.RESULT_OK, null);
+        } else if (api.isUserResolvableError(code) &&
+                api.showErrorDialogFragment(this, code, REQUEST_GOOGLE_PLAY_SERVICES)) {
+            // wait for onActivityResult call (see below)
+        } else {
+            Toast.makeText(this, api.getErrorString(code), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode) {
+            case REQUEST_GOOGLE_PLAY_SERVICES:
+                if (resultCode == Activity.RESULT_OK) {
+
+                }
+                break;
+
+            default:
+                super.onActivityResult(requestCode, resultCode, data);
+        }
     }
 }
