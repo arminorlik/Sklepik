@@ -1,5 +1,6 @@
 package com.flex.sklepik;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -9,6 +10,7 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -19,10 +21,10 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.flex.sklepik.data.Places;
+import com.flex.sklepik.data.Post;
 import com.flex.sklepik.remote.PlacesAPI;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -39,8 +41,6 @@ import java.util.Locale;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import io.realm.Realm;
-import io.realm.RealmResults;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -51,18 +51,14 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
     private GoogleMap mMap;
     private double naviLat, naviLong;
-    private double latitude, longitude;
-    private GoogleApiClient mGoogleApiClient;
 
     @BindView(R.id.adView)
     AdView adView;
     @BindView(R.id.butnavi)
     ImageButton butnavi;
     private Location location;
-    private RealmResults<RowModel> rowModels;
     private String shopName;
     private Bundle bundle;
-    private Realm realm;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,7 +68,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(map);
-        mapFragment.getMapAsync(this);
+
 
         bundle = getIntent().getExtras();
         shopName = bundle.getString("shopName");
@@ -82,7 +78,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
 
         AdRequest adRequest = new AdRequest.Builder().build();
         adView.loadAd(adRequest);
-        //realm = Realm.getDefaultInstance();
     }
 
     @Override
@@ -93,10 +88,11 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             Toast.makeText(this, "Uprawnienia nie przyznane", Toast.LENGTH_SHORT).show();
         }
         mMap.setMyLocationEnabled(true);
-        cameraMove();
+        cameraMoveToActualPosition();
 
-        //po wczytaniu mapy wyciągnij dane z bazy sklepów
-        realmDatabaseBuild();
+        //po wczytaniu mapy uruchom AsyncTask i dodaj markery
+        AsyncTaskMarkerPut asyncTaskMarkerPut = new AsyncTaskMarkerPut();
+        asyncTaskMarkerPut.execute();
     }
 
     private void addMarker(double lat, double lon) {
@@ -120,50 +116,10 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         }
     }
 
-    private void moveCameraToActualPosition(double lat, double lon) {
-        CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(new LatLng(lat, lon))
-                .zoom(12).build();
-        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-    }
-
-    private void realmDatabaseBuild() {
-        PlacesAPI.Factory.getInstance().getPlaces().enqueue(new Callback<Places>() {
-
-            @Override
-            public void onResponse(Call<Places> call, Response<Places> response) {
-                for (int i = 0; i < response.body().getPosts().size(); i++) {
-                    if( response.body().getPosts().get(i).getNazwa().equals(shopName)){
-                        addMarker(Double.parseDouble(response.body().getPosts().get(i).getDlug()),
-                                Double.parseDouble(response.body().getPosts().get(i).getSzer()));
-
-
-                    }
-
-                }
-
-            }
-
-            @Override
-            public void onFailure(Call<Places> call, Throwable t) {
-
-            }
-        });
-
-       /* rowModels = realm.where(RowModel.class).equalTo("name", shopName).findAll();
-        if (!rowModels.isEmpty()) {
-
-            for (int i = 0; i < rowModels.size(); i++) {
-
-                addMarker(rowModels.get(i).getLongitude(), rowModels.get(i).getLattitude());
-            }
-        }*/
-    }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        //realm.close();
     }
 
     @Override
@@ -198,13 +154,6 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
     public void onBackPressed() {
         super.onBackPressed();
         mMap.clear();
-        //rowModels = null;
-    }
-
-    @Override
-    protected void onResume() {
-
-        super.onResume();
     }
 
     @Override
@@ -230,7 +179,7 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
         return false;
     }
 
-    public void cameraMove() {
+    public void cameraMoveToActualPosition() {
 
         LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         Criteria criteria = new Criteria();
@@ -256,5 +205,51 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback,
             mMap.animateCamera(CameraUpdateFactory
                     .newCameraPosition(cp));
         }
+    }
+
+    class AsyncTaskMarkerPut extends AsyncTask<Void, Void, Void> {
+
+        private ProgressDialog progressDialog;
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            progressDialog = new ProgressDialog(MapActivity.this);
+            progressDialog.setMessage("Czekaj...");
+            progressDialog.show();
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            PlacesAPI.Factory.getInstance().getPlaces().enqueue(new Callback<Places>() {
+
+                @Override
+                public void onResponse(Call<Places> call, Response<Places> response) {
+                    final List<Post> posts = response.body().getPosts();
+                    for (Post p : posts) {
+                        if (p.getNazwa().equals(shopName)) {
+                            addMarker(Double.parseDouble(p.getDlug()), Double.parseDouble(p.getSzer()));
+                        }
+
+
+                    }
+
+                }
+
+                @Override
+                public void onFailure(Call<Places> call, Throwable t) {
+
+                }
+            });
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            progressDialog.dismiss();
+        }
+
     }
 }

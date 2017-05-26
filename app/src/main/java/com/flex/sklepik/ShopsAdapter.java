@@ -68,7 +68,7 @@ public class ShopsAdapter extends RecyclerView.Adapter<ShopsAdapter.MyViewHolder
 
                 @Override
                 public boolean onResourceReady(GlideDrawable resource, String model, Target<GlideDrawable> target, boolean isFromMemoryCache, boolean isFirstResource) {
-                    progressDialog.hide();
+                    progressDialog.dismiss();
                     return false;
                 }
             }).centerCrop().fitCenter().into(holder.thumbnail);

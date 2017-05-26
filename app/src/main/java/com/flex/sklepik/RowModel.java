@@ -1,18 +1,14 @@
 package com.flex.sklepik;
 
-import io.realm.RealmObject;
-import io.realm.annotations.Required;
 
 /**
  * Created by Armin on 2017-05-16.
  */
 
 
-public class RowModel extends RealmObject {
+public class RowModel {
 
-    @Required
     private String name;
-    @Required
     private Double lattitude, longitude;
 
     public String getName() {
@@ -45,6 +41,5 @@ public class RowModel extends RealmObject {
         this.longitude = longitude;
     }
 
-    public RowModel() {
-    }
+
 }

@@ -15,11 +15,10 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.flex.sklepik.data.Places;
-import com.flex.sklepik.remote.PlacesAPI;
+import com.flex.sklepik.remote.Places_NamesAPI;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 
@@ -29,7 +28,6 @@ import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import io.realm.Realm;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -37,10 +35,8 @@ import retrofit2.Response;
 public class MainActivity extends AppCompatActivity {
 
     List<String> shopsNames;
-    ArrayList<RowModel> rowModels;
     public static final int REQUEST_GOOGLE_PLAY_SERVICES = 1972;
 
-    public Realm mRealm;
     @BindView(R.id.toolbar_layout)
     CollapsingToolbarLayout toolbarLayout;
     @BindView(R.id.app_bar)
@@ -58,8 +54,6 @@ public class MainActivity extends AppCompatActivity {
 
         ButterKnife.bind(this);
 
-        startRegistrationService();
-
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ConnectionDetector connectionDetector = new ConnectionDetector(this);
@@ -71,11 +65,7 @@ public class MainActivity extends AppCompatActivity {
 
         checkPlayServices();
 
-        rowModels = new ArrayList<>();
         shopsNames = new ArrayList<>();
-        Realm.init(this);
-
-        mRealm = Realm.getDefaultInstance();
 
         initCollapsingToolbar();
 
@@ -128,43 +118,22 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            progressDialog.hide();
+            progressDialog.dismiss();
         }
 
         @Override
         protected Void doInBackground(Void... voids) {
 
-            PlacesAPI.Factory.getInstance().getPlaces().enqueue(new Callback<Places>() {
+            Places_NamesAPI.Factory.getInstance().getPlaces().enqueue(new Callback<Places>() {
 
                 @Override
                 public void onResponse(Call<Places> call, Response<Places> response) {
                     for (int i = 0; i < response.body().getPosts().size(); i++) {
-                        RowModel rowModel = new RowModel(response.body().getPosts().get(i).getNazwa(),
-                                Double.parseDouble(response.body().getPosts().get(i).getSzer()),
-                                Double.parseDouble(response.body().getPosts().get(i).getDlug()));
-                        rowModels.add(rowModel);
-                    }
-                    String oldName;
-                    oldName = rowModels.get(0).getName();
-                    shopsNames.add(rowModels.get(0).getName());
-
-                    mRealm.beginTransaction();
-                    mRealm.copyToRealm(rowModels);
-                    mRealm.commitTransaction();
-                    mRealm.close();
-
-                    for (int j = 0; j < rowModels.size(); j++) {
-
-                        if (rowModels.get(j).getName().equals(oldName)) {
-                            continue;
-                        }
-                        oldName = rowModels.get(j).getName();
-                        shopsNames.add(rowModels.get(j).getName());
+                        shopsNames.add(response.body().getPosts().get(i).getNazwa());
                     }
 
                     //sortowanie listy z nazwami sklepow
                     Collections.sort(shopsNames);
-
                     recyclerView.setAdapter(adapter);
                 }
 
@@ -180,9 +149,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
-
         recyclerView.setAdapter(adapter);
-
         super.onResume();
     }
 
@@ -212,19 +179,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-    }
-
-    private void startRegistrationService() {
-        GoogleApiAvailability api = GoogleApiAvailability.getInstance();
-        int code = api.isGooglePlayServicesAvailable(this);
-        if (code == ConnectionResult.SUCCESS) {
-            onActivityResult(REQUEST_GOOGLE_PLAY_SERVICES, Activity.RESULT_OK, null);
-        } else if (api.isUserResolvableError(code) &&
-                api.showErrorDialogFragment(this, code, REQUEST_GOOGLE_PLAY_SERVICES)) {
-            // wait for onActivityResult call (see below)
-        } else {
-            Toast.makeText(this, api.getErrorString(code), Toast.LENGTH_LONG).show();
-        }
     }
 
     @Override

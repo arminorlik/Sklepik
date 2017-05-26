@@ -11,22 +11,22 @@ import retrofit2.http.GET;
  * Created by Armin on 2017-05-16.
  */
 
-public interface PlacesAPI {
+public interface Places_NamesAPI {
 
     String baseUrl = "http://bakusek.zz.mu/";
 
-    @GET("webservice/market.php")
+    @GET("webservice/market_Names.php")
     Call<Places> getPlaces();
     class Factory {
-        public static PlacesAPI service;
+        public static Places_NamesAPI service;
 
-        public static PlacesAPI getInstance() {
+        public static Places_NamesAPI getInstance() {
 
             if (service == null) {
                 Retrofit retrofit = new Retrofit.Builder().addConverterFactory(GsonConverterFactory.create())
                         .baseUrl(baseUrl)
                         .build();
-                service = retrofit.create(PlacesAPI.class);
+                service = retrofit.create(Places_NamesAPI.class);
                 return service;
             } else {
                 return service;
